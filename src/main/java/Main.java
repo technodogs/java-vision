@@ -3,7 +3,7 @@ import java.util.ArrayList;
 import edu.wpi.first.wpilibj.networktables.*;
 import edu.wpi.first.wpilibj.tables.*;
 import edu.wpi.cscore.*;
-import org.opencv.core.Mat;
+import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.*;
 
@@ -32,13 +32,16 @@ public class Main {
     Mat inputImage = new Mat();
     Mat hsv = new Mat();
     int i = 0;
+    GripPipeline pipeline = new GripPipeline();
     
     // Infinitely process image
     while (true) {
     	if(camera1.read(inputImage)) {
-    		//System.out.println("read" + Integer.toString(i));
+    		pipeline.process(inputImage);
+    		Imgproc.drawContours(inputImage, pipeline.filterContoursOutput(), -1, new Scalar(0, 255, 0), 3);
     		imageSource1.putFrame(inputImage);
-    		//i++;
+    		
+    		calculateGear(pipeline.filterContoursOutput());
     	}
 //    	if(camera2.read(inputImage)) {
 //    		//System.out.println("read" + Integer.toString(i));
@@ -47,6 +50,30 @@ public class Main {
 //    	}
     }
     
+  }
+  
+  private static void calculateGear(ArrayList<MatOfPoint> contours) {
+	  ArrayList<Double> centerX = new ArrayList<Double>();
+	  ArrayList<Double> centerY = new ArrayList<Double>();
+	  
+	  for (MatOfPoint c : contours) {
+		  Rect cRect = Imgproc.boundingRect(c);
+		  
+		  int cX = Math.round((cRect.x + cRect.width)/2);
+		  int cY = Math.round((cRect.y + cRect.height)/2);
+		  double cRatio = cRect.width / cRect.height;
+		  
+		  centerX.add(new Double(cX));
+		  centerY.add(new Double(cY));
+	  }
+	  
+	  writeNetworkTables(centerX);
+  }
+  private static void writeNetworkTables(ArrayList<Double> centerX) {
+	  NetworkTable table = NetworkTable.getTable("DogVision");
+	  ITable calcTable = table.getSubTable("gear");
+	  
+	  calcTable.putNumberArray("centerX", toDoubleArr(centerX));
   }
   
   private static VideoCapture startCamera(int device) {
@@ -61,9 +88,6 @@ public class Main {
 	MjpegServer cvStream = new MjpegServer(webcam_name, local_port);
 	cvStream.setSource(imageSource);
 	
-	// setup grip pipeline from grip.py
-	//self.__grip_pipeline = GripPipeline()
-	
 	// write camera info
 	NetworkTable table = NetworkTable.getTable("CameraPublisher");
 	ITable camTable = table.getSubTable(webcam_name);
@@ -74,6 +98,15 @@ public class Main {
 	camTable.putStringArray("streams", streams);
 	
 	return imageSource;
+  }
+  public static double[] toDoubleArr(ArrayList<Double> sourceArray)
+  {
+      double[] ret = new double[sourceArray.size()];
+      for (int i=0; i < ret.length; i++)
+      {
+          ret[i] = sourceArray.get(i).doubleValue();
+      }
+      return ret;
   }
 
 }
