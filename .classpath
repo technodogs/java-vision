@@ -2,9 +2,9 @@
 <classpath>
 	<classpathentry kind="src" path="src/main/java"/>
 	<classpathentry kind="lib" path="gradle/wrapper/gradle-wrapper.jar"/>
-	<classpathentry kind="lib" path="C:/Users/nathan/workspace/vision/cscore-1.0.1-windows2015.jar"/>
-	<classpathentry kind="lib" path="C:/Users/nathan/workspace/vision/NetworkTables-3.1.6-windows2015.jar"/>
-	<classpathentry kind="lib" path="C:/Users/nathan/workspace/vision/opencv-320.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="build/dependencies/cscore-1.0.1-windows2015.jar"/>
+	<classpathentry kind="lib" path="build/dependencies/NetworkTables-3.1.6-windows2015.jar"/>
+	<classpathentry kind="lib" path="build/dependencies/opencv-320.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
