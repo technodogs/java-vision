@@ -41,7 +41,7 @@ public class Tape {
 	}
 	
 	public void calculateDistanceGear() {
-		this.distance = (int) Math.round( (5 * 240) / (2 * this.rect.height * Math.tan(50)) );
+		this.distance = (int) Math.round( (5 * 240) / (2 * this.rect.height * Math.tan(50)) ) * -1;
 	}
 	
 	static public boolean isValidGearTape(Rect newRect) {

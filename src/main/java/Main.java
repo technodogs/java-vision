@@ -31,7 +31,7 @@ public class Main {
     NetworkTable.setClientMode();
     // Set your team number here
     //NetworkTable.setTeam(3707);
-    NetworkTable.setIPAddress("127.0.0.1");
+    NetworkTable.setIPAddress("10.37.7.16");
     NetworkTable.initialize();
     
     //windows-x86_64_2015
@@ -45,6 +45,7 @@ public class Main {
     // All Mats and Lists should be stored outside the loop to avoid allocations
     // as they are expensive to create
     Mat inputImage = new Mat();
+    Mat inputImage2 = new Mat();
     GripPipeline pipeline = new GripPipeline();
     
     boolean camerasConnected = false;
@@ -61,12 +62,15 @@ public class Main {
 	    		camerasConnected = true;
 	    	}
 	    	else {
-	    		cameraReading = readCameras(camera1, camera2, imageSource1, imageSource2, inputImage, pipeline);
+	    		cameraReading = readCameras(camera1, camera2, imageSource1, imageSource2, inputImage, inputImage2, pipeline);
 	    	}
 	    	
 	    	if(!cameraReading) {
 	    		//System.out.println("NOPE");
 	    	}
+    	}
+    	else {
+    		//System.out.println("NOPE");
     	}
 
     }
@@ -74,7 +78,7 @@ public class Main {
   }
   
   
-  private static boolean readCameras(VideoCapture camera1, VideoCapture camera2, CvSource imageSource1, CvSource imageSource2, Mat inputImage, GripPipeline pipeline) {
+  private static boolean readCameras(VideoCapture camera1, VideoCapture camera2, CvSource imageSource1, CvSource imageSource2, Mat inputImage, Mat inputImage2, GripPipeline pipeline) {
 	boolean cam1 = false;
 	boolean cam2 = false;
 	
@@ -83,23 +87,29 @@ public class Main {
 		pipeline.process(inputImage);
 		Imgproc.drawContours(inputImage, pipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 3);
 		
-		calculateGear(inputImage, pipeline.filterContoursOutput());
+		//calculateGear(inputImage, pipeline.filterContoursOutput());
 		
 		drawBackupCamera(inputImage);
 		
 		imageSource1.putFrame(inputImage);
 	}
+	else {
+		System.out.println("CAM1 BAD");
+	}
 	
-	cam2 = camera2.read(inputImage);
+	cam2 = camera2.read(inputImage2);
 	if(cam2) {
-		pipeline.process(inputImage);
-		Imgproc.drawContours(inputImage, pipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 3);
+		pipeline.process(inputImage2);
+		Imgproc.drawContours(inputImage2, pipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 3);
 		
-		calculateGear(inputImage, pipeline.filterContoursOutput());
+		calculateGear(inputImage2, pipeline.filterContoursOutput());
 		
-		drawBackupCamera(inputImage);
+		drawBackupCamera(inputImage2);
 		
-		imageSource2.putFrame(inputImage);
+		imageSource2.putFrame(inputImage2);
+	}
+	else {
+		System.out.println("CAM2 BAD");
 	}
 	
 	return cam1 && cam2;
@@ -110,12 +120,12 @@ public class Main {
 	  Imgproc.line(inputImage, new Point(145,60), new Point(175,60), new Scalar(255, 255, 255));
 	  Imgproc.line(inputImage, new Point(150,80), new Point(170,80), new Scalar(255, 255, 255));
 	  
-	  Imgproc.line(inputImage, new Point(150,160), new Point(170,160), new Scalar(0, 255, 0));
-	  Imgproc.line(inputImage, new Point(145,180), new Point(175,180), new Scalar(0, 255, 255));
-	  Imgproc.line(inputImage, new Point(140,200), new Point(180,200), new Scalar(0, 0, 255));
+	  Imgproc.line(inputImage, new Point(210,160), new Point(230,160), new Scalar(0, 255, 0));
+	  Imgproc.line(inputImage, new Point(205,180), new Point(235,180), new Scalar(0, 255, 255));
+	  Imgproc.line(inputImage, new Point(200,200), new Point(240,200), new Scalar(0, 0, 255));
 	  
-	  Imgproc.line(inputImage, new Point(20,220), new Point(100,150), new Scalar(255, 255, 255));
-	  Imgproc.line(inputImage, new Point(300,220), new Point(220,150), new Scalar(255, 255, 255));
+	  Imgproc.line(inputImage, new Point(100,220), new Point(180,150), new Scalar(255, 255, 255));
+	  Imgproc.line(inputImage, new Point(360,220), new Point(280,150), new Scalar(255, 255, 255));
   }
   
   private static void calculateGear(Mat inputImage, ArrayList<MatOfPoint> contours) {
