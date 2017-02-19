@@ -7,7 +7,7 @@ ext.ntcoreDep = { ->
     } else {
       classifier = buildType
     }
-    return "edu.wpi.first.wpilib.networktables.java:NetworkTables:3.1.6:$classifier"
+    return "edu.wpi.first.wpilib.networktables.java:NetworkTables:+:$classifier"
 }
 
 ext.cscoreDep = { ->
@@ -17,7 +17,7 @@ ext.cscoreDep = { ->
     } else {
       classifier = buildType
     }
-    return "edu.wpi.cscore.java:cscore:1.0.1:$classifier"
+    return "edu.wpi.cscore.java:cscore:+:$classifier"
 }
 
 ext.getOpenCvPlatformPackage = { ->
