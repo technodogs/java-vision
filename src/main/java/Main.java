@@ -36,10 +36,10 @@ public class Main {
     
     //windows-x86_64_2015
 
-    VideoCapture camera1 = startCamera(0);
+    VideoCapture camera1 = null;
     CvSource imageSource1 = startStream("rear", local_ip, 1188);
     
-    VideoCapture camera2 = startCamera(1);
+    VideoCapture camera2 = null;
     CvSource imageSource2 = startStream("front", local_ip, 1187);
 
     // All Mats and Lists should be stored outside the loop to avoid allocations
@@ -48,17 +48,31 @@ public class Main {
     GripPipeline pipeline = new GripPipeline();
     
     boolean camerasConnected = false;
+    boolean cameraReading = false;
     
     // Infinitely process image
     while (true) {
-    	camerasConnected = readCameras(camera1, camera2, imageSource1, imageSource2, inputImage, pipeline);
     	
-    	if(!camerasConnected) {
-    		System.out.println("NOPE");
+    	if(NetworkTable.connections().length > 0) {
+	    	if(!camerasConnected) {
+	    		System.out.println("GO");
+	    		camera1 = startCamera(0);
+	    		camera2 = startCamera(1);
+	    		camerasConnected = true;
+	    	}
+	    	else {
+	    		cameraReading = readCameras(camera1, camera2, imageSource1, imageSource2, inputImage, pipeline);
+	    	}
+	    	
+	    	if(!cameraReading) {
+	    		//System.out.println("NOPE");
+	    	}
     	}
+
     }
     
   }
+  
   
   private static boolean readCameras(VideoCapture camera1, VideoCapture camera2, CvSource imageSource1, CvSource imageSource2, Mat inputImage, GripPipeline pipeline) {
 	boolean cam1 = false;
@@ -66,7 +80,6 @@ public class Main {
 	
 	cam1 = camera1.read(inputImage);
 	if(cam1) {
-		System.out.println("1");
 		pipeline.process(inputImage);
 		Imgproc.drawContours(inputImage, pipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 3);
 		
@@ -79,7 +92,6 @@ public class Main {
 	
 	cam2 = camera2.read(inputImage);
 	if(cam2) {
-		System.out.println("2");
 		pipeline.process(inputImage);
 		Imgproc.drawContours(inputImage, pipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 3);
 		
