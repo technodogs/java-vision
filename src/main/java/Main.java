@@ -15,32 +15,18 @@ public class Main {
     System.loadLibrary("opencv_java310");
     
     String local_ip = "127.0.0.1";
-    InetAddress IP = null;
-	try {
-		IP = InetAddress.getLocalHost();
-	} catch (UnknownHostException e) {
-		// TODO Auto-generated catch block
-		e.printStackTrace();
-	}
-	if(IP != null) {
-		local_ip = IP.getHostAddress();
-		System.out.println("IP of my system is := "+IP.getHostAddress());
-	}
 
     // Connect NetworkTables, and get access to the publishing table
     NetworkTable.setClientMode();
-    // Set your team number here
-    //NetworkTable.setTeam(3707);
-    NetworkTable.setIPAddress("10.37.7.16");
+    NetworkTable.setTeam(3707);
+    //NetworkTable.setIPAddress("127.0.0.1");
     NetworkTable.initialize();
     
-    //windows-x86_64_2015
-
     VideoCapture camera1 = null;
-    CvSource imageSource1 = startStream("rear", local_ip, 1188);
+    CvSource imageSource1 = null;
     
     VideoCapture camera2 = null;
-    CvSource imageSource2 = startStream("front", local_ip, 1187);
+    CvSource imageSource2 = null;
 
     // All Mats and Lists should be stored outside the loop to avoid allocations
     // as they are expensive to create
@@ -56,9 +42,17 @@ public class Main {
     	
     	if(NetworkTable.connections().length > 0) {
 	    	if(!camerasConnected) {
-	    		System.out.println("GO");
+	    		System.out.println("Starting Cameras");
+	    		
+	    		//USB Cameras
 	    		camera1 = startCamera(0);
 	    		camera2 = startCamera(1);
+	    		
+	    		//MJPG Streams
+	    		local_ip = getMyIP();
+	    		imageSource1 = startStream("front", local_ip, 1188);
+	    		imageSource2 = startStream("rear", local_ip, 1187);
+	    		
 	    		camerasConnected = true;
 	    	}
 	    	else {
@@ -85,7 +79,7 @@ public class Main {
 	cam1 = camera1.read(inputImage);
 	if(cam1) {
 		pipeline.process(inputImage);
-		Imgproc.drawContours(inputImage, pipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 3);
+		Imgproc.drawContours(inputImage, pipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 1);
 		
 		//calculateGear(inputImage, pipeline.filterContoursOutput());
 		
@@ -100,7 +94,7 @@ public class Main {
 	cam2 = camera2.read(inputImage2);
 	if(cam2) {
 		pipeline.process(inputImage2);
-		Imgproc.drawContours(inputImage2, pipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 3);
+		Imgproc.drawContours(inputImage2, pipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 1);
 		
 		calculateGear(inputImage2, pipeline.filterContoursOutput());
 		
@@ -226,14 +220,22 @@ public class Main {
 	
 	return imageSource;
   }
-  public static double[] toDoubleArr(ArrayList<Double> sourceArray)
+  
+  public static String getMyIP()
   {
-      double[] ret = new double[sourceArray.size()];
-      for (int i=0; i < ret.length; i++)
-      {
-          ret[i] = sourceArray.get(i).doubleValue();
-      }
-      return ret;
+	  String local_ip = "127.0.0.1";
+	  InetAddress IP = null;
+	  try {
+			IP = InetAddress.getLocalHost();
+	  } catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+	  }
+	  if(IP != null) {
+			local_ip = IP.getHostAddress();
+			System.out.println("IP of my system is := "+IP.getHostAddress());
+	  }
+	  return local_ip;
   }
 
 }
