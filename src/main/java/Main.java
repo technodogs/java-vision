@@ -98,7 +98,7 @@ public class Main {
 		
 		calculateGear(inputImage2, pipeline.filterContoursOutput());
 		
-		drawBackupCamera(inputImage2);
+		//drawBackupCamera(inputImage2);
 		
 		imageSource2.putFrame(inputImage2);
 	}
@@ -169,16 +169,21 @@ public class Main {
 		  
 		  //write the contour that we thought was best to image
 		  ArrayList<MatOfPoint> best = new ArrayList<MatOfPoint>();
-		  best.add(bestContour);
-		  Imgproc.drawContours(inputImage, best, -1, new Scalar(0, 255, 0), 3);
+		  best.add(bestContour); 
 		  
 		  int cnt = 1;
 		  if(bestTape.hasNeighbor) {
 			  cnt = 2;
+			  //write to network tables
+			  int peg = bestTape.centerX + ((bestTape.centerXNeighbor - bestTape.centerX) / 2);
+			  writeNetworkTables("gear", bestTape.distance, peg, bestTape.centerY, cnt, true);
+			  Imgproc.drawContours(inputImage, best, -1, new Scalar(0, 255, 0), 3);
+		  }
+		  else {
+			  writeNetworkTables("gear", 0, 0, 0, 1, false);
 		  }
 		  
-		  //write to network tables
-		  writeNetworkTables("gear", bestTape.distance, bestTape.centerX, bestTape.centerY, cnt, true);
+		  
 	  }
 	  else {
 		  writeNetworkTables("gear", 0, 0, 0, 0, false);

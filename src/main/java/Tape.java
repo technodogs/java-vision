@@ -3,6 +3,7 @@ import org.opencv.core.Rect;
 public class Tape {
 	public boolean hasNeighbor = false;
 	public int distanceNeighbor = 0;
+	public int centerXNeighbor = 0;
 	
 	public int distance = 0;
 	public int angle = 0;
@@ -32,10 +33,9 @@ public class Tape {
 		}
 		
 		this.hasNeighbor = yMatch && xMatch;
-//		if(this.hasNeighbor) {
-//			tape2.calculateDistanceGear();
-//			this.distanceNeighbor = tape2.distanceNeighbor;
-//		}
+		if(this.hasNeighbor) {
+			this.centerXNeighbor = tape2.centerX;
+		}
 		
 		return this.hasNeighbor;
 	}
