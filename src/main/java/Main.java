@@ -20,6 +20,7 @@ public class Main {
     NetworkTable.setClientMode();
     NetworkTable.setTeam(3707);
     //NetworkTable.setIPAddress("127.0.0.1");
+    //NetworkTable.setIPAddress("10.37.7.87");
     NetworkTable.initialize();
     
     VideoCapture camera1 = null;
@@ -32,7 +33,8 @@ public class Main {
     // as they are expensive to create
     Mat inputImage = new Mat();
     Mat inputImage2 = new Mat();
-    GripPipeline pipeline = new GripPipeline();
+    GripPipelineGreen pipelineGreen = new GripPipelineGreen();
+    GripPipelineRed pipelineRed = new GripPipelineRed();
     
     boolean camerasConnected = false;
     boolean cameraReading = false;
@@ -45,8 +47,8 @@ public class Main {
 	    		System.out.println("Starting Cameras");
 	    		
 	    		//USB Cameras
-	    		camera1 = startCamera(0);
-	    		camera2 = startCamera(1);
+	    		camera1 = startCamera(1);
+	    		camera2 = startCamera(0);
 	    		
 	    		//MJPG Streams
 	    		local_ip = getMyIP();
@@ -56,7 +58,8 @@ public class Main {
 	    		camerasConnected = true;
 	    	}
 	    	else {
-	    		cameraReading = readCameras(camera1, camera2, imageSource1, imageSource2, inputImage, inputImage2, pipeline);
+	    		cameraReading = readCameras(camera1, camera2, imageSource1, imageSource2, inputImage, inputImage2, pipelineGreen, pipelineRed);
+	    		
 	    	}
 	    	
 	    	if(!cameraReading) {
@@ -72,16 +75,16 @@ public class Main {
   }
   
   
-  private static boolean readCameras(VideoCapture camera1, VideoCapture camera2, CvSource imageSource1, CvSource imageSource2, Mat inputImage, Mat inputImage2, GripPipeline pipeline) {
+  private static boolean readCameras(VideoCapture camera1, VideoCapture camera2, CvSource imageSource1, CvSource imageSource2, Mat inputImage, Mat inputImage2, GripPipelineGreen pipelineGreen, GripPipelineRed pipelineRed) {
 	boolean cam1 = false;
 	boolean cam2 = false;
 	
 	cam1 = camera1.read(inputImage);
 	if(cam1) {
-		pipeline.process(inputImage);
-		Imgproc.drawContours(inputImage, pipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 1);
+		pipelineRed.process(inputImage);
+		Imgproc.drawContours(inputImage, pipelineRed.filterContoursOutput(), -1, new Scalar(255, 0, 0), 1);
 		
-		//calculateGear(inputImage, pipeline.filterContoursOutput());
+		calculateBoiler(inputImage, pipelineRed.filterContoursOutput());
 		
 		drawBackupCamera(inputImage);
 		
@@ -93,10 +96,10 @@ public class Main {
 	
 	cam2 = camera2.read(inputImage2);
 	if(cam2) {
-		pipeline.process(inputImage2);
-		Imgproc.drawContours(inputImage2, pipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 1);
+		pipelineGreen.process(inputImage2);
+		Imgproc.drawContours(inputImage2, pipelineGreen.filterContoursOutput(), -1, new Scalar(255, 0, 0), 1);
 		
-		calculateGear(inputImage2, pipeline.filterContoursOutput());
+		calculateGear(inputImage2, pipelineGreen.filterContoursOutput());
 		
 		//drawBackupCamera(inputImage2);
 		
@@ -118,77 +121,57 @@ public class Main {
 	  Imgproc.line(inputImage, new Point(205,180), new Point(235,180), new Scalar(0, 255, 255));
 	  Imgproc.line(inputImage, new Point(200,200), new Point(240,200), new Scalar(0, 0, 255));
 	  
-	  Imgproc.line(inputImage, new Point(100,220), new Point(180,150), new Scalar(255, 255, 255));
-	  Imgproc.line(inputImage, new Point(360,220), new Point(280,150), new Scalar(255, 255, 255));
+	  Imgproc.line(inputImage, new Point(100,220), new Point(180,150), new Scalar(255, 255, 255),2);
+	  Imgproc.line(inputImage, new Point(360,220), new Point(280,150), new Scalar(255, 255, 255),2);
   }
-  
-  private static void calculateGear(Mat inputImage, ArrayList<MatOfPoint> contours) {
-	  
-	  Tape bestTape = null;
-	  MatOfPoint bestContour = null;
-	  
-	  for (MatOfPoint c : contours) {
+  private static void calculateBoiler(Mat inputImage, ArrayList<MatOfPoint> contours) {
+	  int centerX = 0;
+	  if(contours.size() > 0) {
+		  Rect cRect1 = Imgproc.boundingRect(contours.get(0));
 		  
-		  Rect cRect = Imgproc.boundingRect(c);
-		  
-		  //check if its a tall piece of tape
-		  if(Tape.isValidGearTape(cRect)) { 
-			  //System.out.println("*****GOOD ratio");
-			  
-			  Tape tape1 = new Tape();
-			  tape1.setRect(cRect);
-			  
-			  //see if there is another valid tape to the right
-			  Tape tape2 = new Tape();
-			  for(MatOfPoint c2 : contours) {
-				  if(c != c2) {
-					  tape2.setRect(Imgproc.boundingRect(c2));
-					  if(tape1.checkNeighborGearTape(tape2)) {
-						  break;
-					  }
-				  }
-			  }
-			  
-			  //if we have a neighbor tape, set this tape to best and stop checking others
-			  if(tape1.hasNeighbor) {
-				  bestTape = tape1;
-				  bestContour = c;
-				  break;
-			  }
-			  //else if this is the first validTape, use it but keep looking
-			  else if(bestTape == null) {
-				  bestTape = tape1;
-				  bestContour = c;
-			  }
-		  }
-		  
-	  }
-	  
-	  if(bestTape != null) {
-		  bestTape.calculateDistanceGear();
-		  
-		  //write the contour that we thought was best to image
-		  ArrayList<MatOfPoint> best = new ArrayList<MatOfPoint>();
-		  best.add(bestContour); 
-		  
-		  int cnt = 1;
-		  if(bestTape.hasNeighbor) {
-			  cnt = 2;
-			  //write to network tables
-			  int peg = bestTape.centerX + ((bestTape.centerXNeighbor - bestTape.centerX) / 2);
-			  writeNetworkTables("gear", bestTape.distance, peg, bestTape.centerY, cnt, true);
-			  Imgproc.drawContours(inputImage, best, -1, new Scalar(0, 255, 0), 3);
-		  }
-		  else {
-			  writeNetworkTables("gear", 0, 0, 0, 1, false);
-		  }
-		  
-		  
+		  centerX = (cRect1.width / 2) + cRect1.x;
+		  writeNetworkTables("boiler", 0, centerX, 0, contours.size(), true);
 	  }
 	  else {
-		  writeNetworkTables("gear", 0, 0, 0, 0, false);
+		  writeNetworkTables("boiler", 0, 0, 0, 0, false);
 	  }
+  }
+  private static void calculateGear(Mat inputImage, ArrayList<MatOfPoint> contours) {
 	  
+	  if(contours.size() == 2) {
+		  Rect cRect1 = Imgproc.boundingRect(contours.get(0));
+		  Rect cRect2 = Imgproc.boundingRect(contours.get(1));
+		  
+		  //if there are around the same width
+		  //if(cRect1.width + (cRect1.width * 0.3) > cRect2.width && cRect1.width - (cRect1.width * 0.3) < cRect2.width) {
+		  //and the same height
+		  //if(cRect1.y + (cRect1.y * 0.2) > cRect2.y && cRect1.y - (cRect1.y * 0.2) < cRect2.y) {
+			  if(cRect1.x > cRect2.x) {
+				  getPegPosition(cRect2,cRect1, inputImage);
+				  return;
+			  }
+			  else {
+				  getPegPosition(cRect1,cRect2, inputImage);
+				  return;
+			  }
+		  //}
+		  //}
+	  }
+	  writeNetworkTables("gear", 0, 0, 0, 0, false);	  
+	  
+  }
+  public static int calculateDistanceGear(Rect rect) {
+	  return (int) Math.round( (5 * 240) / (2 * rect.height * Math.tan(50)) ) * -1;
+  }
+  private static void getPegPosition(Rect rLeft, Rect rRight, Mat inputImage) {
+	  
+	  int centerX = ((rRight.x - rLeft.x) / 2) + rLeft.x + (rLeft.width / 2);
+	  int centerY = ((rLeft.y - rLeft.height) / 2) + rLeft.y + (rLeft.height / 2);
+	  int distance = calculateDistanceGear(rLeft);
+	  
+	  writeNetworkTables("gear", distance, centerX, centerY, 2, true);
+	  
+	  Imgproc.rectangle(inputImage, new Point(rLeft.x,rLeft.y), new Point(rLeft.x + (rRight.x - rLeft.x + rRight.width), rLeft.y+rLeft.height), new Scalar(0, 255, 0), 3);
 	  
   }
   private static void writeNetworkTables(String target, int distance, int centerX, int centerY, int tapeCount, boolean locked) {
