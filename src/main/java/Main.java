@@ -28,16 +28,21 @@ public class Main {
     
     VideoCapture camera2 = null;
     CvSource imageSource2 = null;
-
+    
     // All Mats and Lists should be stored outside the loop to avoid allocations
     // as they are expensive to create
     Mat inputImage = new Mat();
     Mat inputImage2 = new Mat();
-    GripPipelineGreen pipelineGreen = new GripPipelineGreen();
-    GripPipelineRed pipelineRed = new GripPipelineRed();
+//    GripPipelineGreen pipelineGreen = new GripPipelineGreen();
+//    GripPipelineRed pipelineRed = new GripPipelineRed();
+    NTPipeline ntPipeline = new NTPipeline();
     
     boolean camerasConnected = false;
     boolean cameraReading = false;
+    
+    double[] defaultHue = {70.06978417266187, 121.22866894197952};
+	double[] defaultSat = {93.1025179856115, 255.0};
+	double[] defaultVal = {35.773381294964025, 255.0};
     
     // Infinitely process image
     while (true) {
@@ -58,7 +63,7 @@ public class Main {
 	    		camerasConnected = true;
 	    	}
 	    	else {
-	    		cameraReading = readCameras(camera1, camera2, imageSource1, imageSource2, inputImage, inputImage2, pipelineGreen, pipelineRed);
+	    		cameraReading = readCameras(camera1, camera2, imageSource1, imageSource2, inputImage, inputImage2, ntPipeline, defaultHue, defaultSat, defaultVal);
 	    		
 	    	}
 	    	
@@ -75,16 +80,29 @@ public class Main {
   }
   
   
-  private static boolean readCameras(VideoCapture camera1, VideoCapture camera2, CvSource imageSource1, CvSource imageSource2, Mat inputImage, Mat inputImage2, GripPipelineGreen pipelineGreen, GripPipelineRed pipelineRed) {
+  private static boolean readCameras(VideoCapture camera1, VideoCapture camera2, CvSource imageSource1, CvSource imageSource2, Mat inputImage, Mat inputImage2, NTPipeline ntPipeline, double[] defaultHue, double[] defaultSat, double[] defaultVal) {
 	boolean cam1 = false;
 	boolean cam2 = false;
 	
+	NetworkTable smart = NetworkTable.getTable("SmartDashboard");
+	double[] hue = orderArrayValues(smart.getNumberArray("HueRange", defaultHue));
+	double[] sat = orderArrayValues(smart.getNumberArray("SaturationRange", defaultSat));
+	double[] val = orderArrayValues(smart.getNumberArray("ValueRange", defaultVal));
+	
+//	System.out.print(Double.toString(hue[0]));
+//	System.out.print(Double.toString(hue[1]));
+//	System.out.print(Double.toString(sat[0]));
+//	System.out.print(Double.toString(sat[1]));
+//	System.out.print(Double.toString(val[0]));
+//	System.out.println(Double.toString(val[1]));
+	
 	cam1 = camera1.read(inputImage);
 	if(cam1) {
-		pipelineRed.process(inputImage);
-		Imgproc.drawContours(inputImage, pipelineRed.filterContoursOutput(), -1, new Scalar(255, 0, 0), 1);
 		
-		calculateBoiler(inputImage, pipelineRed.filterContoursOutput());
+		ntPipeline.process(inputImage, hue, sat, val, 150, 0, 1000);
+		Imgproc.drawContours(inputImage, ntPipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 1);
+		
+		calculateBoiler(inputImage, ntPipeline.filterContoursOutput());
 		
 		drawBackupCamera(inputImage);
 		
@@ -96,10 +114,10 @@ public class Main {
 	
 	cam2 = camera2.read(inputImage2);
 	if(cam2) {
-		pipelineGreen.process(inputImage2);
-		Imgproc.drawContours(inputImage2, pipelineGreen.filterContoursOutput(), -1, new Scalar(255, 0, 0), 1);
+		ntPipeline.process(inputImage2, hue, sat, val, 150, 0, 1000);
+		Imgproc.drawContours(inputImage2, ntPipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 1);
 		
-		calculateGear(inputImage2, pipelineGreen.filterContoursOutput());
+		calculateGear(inputImage2, ntPipeline.filterContoursOutput());
 		
 		//drawBackupCamera(inputImage2);
 		
@@ -110,6 +128,15 @@ public class Main {
 	}
 	
 	return cam1 && cam2;
+  }
+  
+  private static double[] orderArrayValues(double[] array) {
+	  if(array[0] > array[1]) {
+		 double temp = array[1];
+		 array[1] = array[0];
+		 array[0] = temp;
+	  }
+	  return array;
   }
   
   private static void drawBackupCamera(Mat inputImage) {
@@ -207,6 +234,42 @@ public class Main {
 	camTable.putStringArray("streams", streams);
 	
 	return imageSource;
+  }
+  
+  private static HttpCamera setHttpCamera(String cameraName) {
+    // Start by grabbing the camera from NetworkTables
+    NetworkTable publishingTable = NetworkTable.getTable("CameraPublisher");
+    // Wait for robot to connect. Allow this to be attempted indefinitely
+    while (true) {
+      try {
+        if (publishingTable.getSubTables().size() > 0) {
+          break;
+        }
+        Thread.sleep(500);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
+
+    HttpCamera camera = null;
+    if (!publishingTable.containsSubTable(cameraName)) {
+      return null;
+    }
+    ITable cameraTable = publishingTable.getSubTable(cameraName);
+    String[] urls = cameraTable.getStringArray("streams", null);
+    if (urls == null) {
+      return null;
+    }
+    ArrayList<String> fixedUrls = new ArrayList<String>();
+    for (String url : urls) {
+      if (url.startsWith("mjpg")) {
+        fixedUrls.add(url.split(":", 2)[1]);
+      }
+    }
+    camera = new HttpCamera("CoprocessorCamera", fixedUrls.toArray(new String[0]));
+    return camera;
   }
   
   public static String getMyIP()
