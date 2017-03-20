@@ -49,14 +49,19 @@ public class Main {
     	
     	if(NetworkTable.connections().length > 0) {
 	    	if(!camerasConnected) {
+	    		//MJPG Streams
+	    		local_ip = getMyIP();
+	    		if(local_ip.startsWith("169")) {
+	    			continue;
+	    		}
+	    		
 	    		System.out.println("Starting Cameras");
 	    		
 	    		//USB Cameras
-	    		camera1 = startCamera(1);
-	    		camera2 = startCamera(0);
+	    		camera1 = startCamera(0);
+	    		camera2 = startCamera(1);
 	    		
-	    		//MJPG Streams
-	    		local_ip = getMyIP();
+	    		
 	    		imageSource1 = startStream("front", local_ip, 1188);
 	    		imageSource2 = startStream("rear", local_ip, 1187);
 	    		
@@ -85,16 +90,30 @@ public class Main {
 	boolean cam2 = false;
 	
 	NetworkTable smart = NetworkTable.getTable("SmartDashboard");
-	double[] hue = orderArrayValues(smart.getNumberArray("HueRange", defaultHue));
-	double[] sat = orderArrayValues(smart.getNumberArray("SaturationRange", defaultSat));
-	double[] val = orderArrayValues(smart.getNumberArray("ValueRange", defaultVal));
+	double[] hue = defaultHue;
+	double[] sat = defaultSat;
+	double[] val = defaultVal;
+	double rearCam = 0;
+	try {
+		hue = orderArrayValues(smart.getNumberArray("HueRange"));
+		sat = orderArrayValues(smart.getNumberArray("SaturationRange"));
+		val = orderArrayValues(smart.getNumberArray("ValueRange"));
+		rearCam = smart.getNumber("RearCamera", 0);
+	}
+	catch(Exception ex) {
+		System.out.println("Exception default values");
+		hue = defaultHue;
+		sat = defaultSat;
+		val = defaultVal;
+		rearCam = 0;
+	}
 	
-//	System.out.print(Double.toString(hue[0]));
-//	System.out.print(Double.toString(hue[1]));
-//	System.out.print(Double.toString(sat[0]));
-//	System.out.print(Double.toString(sat[1]));
-//	System.out.print(Double.toString(val[0]));
-//	System.out.println(Double.toString(val[1]));
+//	System.out.print(" " + Double.toString(hue[0]));
+//	System.out.print(" " + Double.toString(hue[1]));
+//	System.out.print(" " + Double.toString(sat[0]));
+//	System.out.print(" " + Double.toString(sat[1]));
+//	System.out.print(" " + Double.toString(val[0]));
+//	System.out.println(" " + Double.toString(val[1]));
 	
 	cam1 = camera1.read(inputImage);
 	if(cam1) {
@@ -102,9 +121,13 @@ public class Main {
 		ntPipeline.process(inputImage, hue, sat, val, 150, 0, 1000);
 		Imgproc.drawContours(inputImage, ntPipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 1);
 		
-		calculateBoiler(inputImage, ntPipeline.filterContoursOutput());
-		
-		drawBackupCamera(inputImage);
+		if(rearCam == 0) {
+			calculateGear(inputImage, ntPipeline.filterContoursOutput());
+		}
+		else {
+			calculateBoiler(inputImage, ntPipeline.filterContoursOutput());	
+			drawBackupCamera(inputImage);
+		}
 		
 		imageSource1.putFrame(inputImage);
 	}
@@ -117,9 +140,13 @@ public class Main {
 		ntPipeline.process(inputImage2, hue, sat, val, 150, 0, 1000);
 		Imgproc.drawContours(inputImage2, ntPipeline.filterContoursOutput(), -1, new Scalar(255, 0, 0), 1);
 		
-		calculateGear(inputImage2, ntPipeline.filterContoursOutput());
-		
-		//drawBackupCamera(inputImage2);
+		if(rearCam != 0) {
+			calculateGear(inputImage2, ntPipeline.filterContoursOutput());
+		}
+		else {
+			calculateBoiler(inputImage2, ntPipeline.filterContoursOutput());	
+			drawBackupCamera(inputImage2);
+		}
 		
 		imageSource2.putFrame(inputImage2);
 	}
@@ -197,6 +224,7 @@ public class Main {
 	  int distance = calculateDistanceGear(rLeft);
 	  
 	  writeNetworkTables("gear", distance, centerX, centerY, 2, true);
+	  System.out.println("GEAR LOCKED= d:" + distance + " x:" + centerX + " y:" + centerY);
 	  
 	  Imgproc.rectangle(inputImage, new Point(rLeft.x,rLeft.y), new Point(rLeft.x + (rRight.x - rLeft.x + rRight.width), rLeft.y+rLeft.height), new Scalar(0, 255, 0), 3);
 	  
